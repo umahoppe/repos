@@ -1,0 +1,51 @@
+body {
+    font-family: sans-serif;
+    margin: 1rem;
+    padding: 0;
+    background: #f9f9f9;
+    color: #333;
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+form label {
+    font-weight: bold;
+    margin-right: 0.3rem;
+}
+
+form select,
+form input,
+form button {
+    padding: 0.5rem;
+    font-size: 1rem;
+}
+
+canvas {
+    max-width: 100%;
+    height: auto;
+    margin-bottom: 2rem;
+}
+
+/* スマホ対応：縦並びになる */
+@media screen and (max-width: 600px) {
+    form {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    form label {
+        margin-right: 0;
+    }
+}
