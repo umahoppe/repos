@@ -1,0 +1,57 @@
+<!-- HTMLテンプレートのトップページ -->
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>気象データ比較</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <h1>🌦️ 月別気温・降水量比較グラフ</h1>
+    <canvas id="tempChart" width="600" height="300"></canvas>
+    <canvas id="rainChart" width="600" height="300"></canvas>
+
+    <script>
+        const labels = {{ labels | safe }};
+        const tempData = {{ temp_data | safe }};
+        const rainData = {{ rain_data | safe }};
+
+        new Chart(document.getElementById('tempChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: tempData
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '月別 平均気温（℃）'
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('rainChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: rainData
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '月別 降水量合計（mm）'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
