@@ -9,7 +9,25 @@
 </head>
 
 <body>
-    <h1>🌦️ 月別気温・降水量比較グラフ</h1>
+    <h1>🌾 地域・年別 気象データ比較</h1>
+
+    <form method="get">
+        <label>地域：</label>
+        <select name="location">
+            {% for name in location_list %}
+            <option value="{{ name }}" {% if location==name %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+        <label>比較年：</label>
+        <input type="text" name="years" value="{{ years_text }}">
+        <button type="submit">表示</button>
+    </form>
+
+    {% if error %}
+    <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    {% if labels %}
     <canvas id="tempChart" width="600" height="300"></canvas>
     <canvas id="rainChart" width="600" height="300"></canvas>
 
@@ -20,38 +38,17 @@
 
         new Chart(document.getElementById('tempChart'), {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: tempData
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '月別 平均気温（℃）'
-                    }
-                }
-            }
+            data: { labels: labels, datasets: tempData },
+            options: { plugins: { title: { display: true, text: '月別 平均気温（℃）' } } }
         });
 
         new Chart(document.getElementById('rainChart'), {
             type: 'bar',
-            data: {
-                labels: labels,
-                datasets: rainData
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '月別 降水量合計（mm）'
-                    }
-                }
-            }
+            data: { labels: labels, datasets: rainData },
+            options: { plugins: { title: { display: true, text: '月別 降水量合計（mm）' } } }
         });
     </script>
+    {% endif %}
 </body>
 
 </html>
