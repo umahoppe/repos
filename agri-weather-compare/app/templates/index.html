@@ -78,20 +78,35 @@
 
         new Chart(document.getElementById('tempChart'), {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: coloredTempData
-            },
+            data: { labels: labels, datasets: tempData },
             options: {
-                responsive: true,
                 plugins: {
                     title: {
                         display: true,
-                        text: '{{ "日別" if mode == "daily" else "月別" }} 平均気温（℃）'
+                        text: '{{ location }} - {{ selected_month }}月 の {{ "【日別】" if mode == "daily" else "【月別】" }} 平均気温（℃）',
+                        font: { size: 18 },
+                        padding: { top: 10, bottom: 10 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 12 }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 12 } }
+                    },
+                    y: {
+                        ticks: { font: { size: 12 } }
                     }
                 }
             }
         });
+
 
         new Chart(document.getElementById('rainChart'), {
             type: 'bar',
@@ -104,12 +119,29 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: '{{ "日別" if mode == "daily" else "月別" }} 降水量合計（mm）'
+                        text: '{{ location }} - {{ selected_month }}月 の {{ "【日別】" if mode == "daily" else "【月別】" }} 降水量合計（mm）',
+                        font: { size: 18 },
+                        padding: { top: 10, bottom: 10 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 12 }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 12 } }
+                    },
+                    y: {
+                        ticks: { font: { size: 12 } }
                     }
                 }
             }
-        });
-    </script>
+        });    </script>
 
 
 
