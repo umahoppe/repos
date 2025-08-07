@@ -1,12 +1,6 @@
 <!-- HTMLテンプレートのトップページ -->
 <!DOCTYPE html>
 <html lang="ja">
-<pre>
-    labels: {{ labels }}
-    temp_data: {{ temp_data }}
-    rain_data: {{ rain_data }}
-    </pre>
-
 <head>
     <meta charset="UTF-8">
     <title>気象データ比較</title>
@@ -61,20 +55,34 @@
     <canvas id="rainChart" width="600" height="300"></canvas>
 
     <script>
-        const labels = {{ labels | safe }};
-        const tempData = {{ temp_data | safe }};
-        const rainData = {{ rain_data | safe }};
+        const labels = {{ labels | tojson }};
+        const tempData = {{ temp_data | tojson }};
+        const rainData = {{ rain_data | tojson }};
 
         new Chart(document.getElementById('tempChart'), {
             type: 'line',
             data: { labels: labels, datasets: tempData },
-            options: { plugins: { title: { display: true, text: '月別 平均気温（℃）' } } }
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '{{ "日別" if mode == "daily" else "月別" }} 平均気温（℃）'
+                    }
+                }
+            }
         });
 
         new Chart(document.getElementById('rainChart'), {
             type: 'bar',
             data: { labels: labels, datasets: rainData },
-            options: { plugins: { title: { display: true, text: '月別 降水量合計（mm）' } } }
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '{{ "日別" if mode == "daily" else "月別" }} 降水量合計（mm）'
+                    }
+                }
+            }
         });
     </script>
     {% endif %}
