@@ -1,6 +1,7 @@
 <!-- HTMLテンプレートのトップページ -->
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <title>気象データ比較</title>
@@ -54,15 +55,35 @@
     <canvas id="tempChart" width="600" height="300"></canvas>
     <canvas id="rainChart" width="600" height="300"></canvas>
 
+
     <script>
-        const labels = {{ labels | tojson }};
-        const tempData = {{ temp_data | tojson }};
-        const rainData = {{ rain_data | tojson }};
+        const labels = {{ labels | tojson}};
+        const tempData = {{ temp_data | tojson}};
+        const rainData = {{ rain_data | tojson}};
+        const colorList = {{ colors | tojson}};
+
+        const coloredTempData = tempData.map((dataset, i) => ({
+            ...dataset,
+            borderColor: colorList[i % colorList.length],
+            backgroundColor: colorList[i % colorList.length],
+            fill: false,
+            tension: 0.3
+        }));
+
+        const coloredRainData = rainData.map((dataset, i) => ({
+            ...dataset,
+            borderColor: colorList[i % colorList.length],
+            backgroundColor: colorList[i % colorList.length]
+        }));
 
         new Chart(document.getElementById('tempChart'), {
             type: 'line',
-            data: { labels: labels, datasets: tempData },
+            data: {
+                labels: labels,
+                datasets: coloredTempData
+            },
             options: {
+                responsive: true,
                 plugins: {
                     title: {
                         display: true,
@@ -74,8 +95,12 @@
 
         new Chart(document.getElementById('rainChart'), {
             type: 'bar',
-            data: { labels: labels, datasets: rainData },
+            data: {
+                labels: labels,
+                datasets: coloredRainData
+            },
             options: {
+                responsive: true,
                 plugins: {
                     title: {
                         display: true,
@@ -85,6 +110,9 @@
             }
         });
     </script>
+
+
+
     {% endif %}
 </body>
 

@@ -228,7 +228,11 @@ def index():
                                mode=mode, selected_month=selected_month,
                                error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[])
 
+    colors = [
+        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0",
+        "#9966FF", "#FF9F40", "#8AC926", "#6A4C93"
+    ]
     return render_template("index.html", labels=labels, temp_data=temp_data, rain_data=rain_data,
                            location=location, valid_years=VALID_YEARS, selected_years=selected_years,
                            location_list=list(LOCATION_COORDS.keys()), mode=mode, selected_month=selected_month,
-                           error=None)
+                           error=None, colors=colors)
