@@ -38,6 +38,13 @@ canvas {
     margin-bottom: 2rem;
 }
 
+.error-message {
+    color: red;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
 /* スマホ対応：縦並びになる */
 @media screen and (max-width: 600px) {
     form {

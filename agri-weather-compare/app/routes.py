@@ -1,11 +1,15 @@
 import os
 import pandas as pd
 from flask import Flask, render_template, request
+from datetime import datetime
+
 
 # ルートから起動されるため、scriptsが見えるようになる
 from scripts.fetch_data import fetch_weather_data
 
 app = Flask(__name__)
+
+VALID_YEARS = list(range(1979, datetime.now().year + 1))
 
 # 地域と緯度経度の対応表
 # 47都道府県とその代表地点（県庁所在地）の緯度・経度
@@ -92,21 +96,30 @@ def load_data(location, years):
 
 
 @app.route('/')
-@app.route('/')
 def index():
     location = request.args.get('location', 'Tokyo')
-    years_text = request.args.get('years', '2021,2022')
+    selected_years = request.args.getlist('years')
 
     try:
-        years = [int(y.strip()) for y in years_text.split(",")]
-    except:
-        return render_template("index.html", location=location, years_text=years_text,
+        # 入力された年を整数化＆有効年だけ残す
+        years = [int(y) for y in selected_years if int(y) in VALID_YEARS]
+    except ValueError:
+        return render_template("index.html", location=location,
+                               valid_years=VALID_YEARS, selected_years=selected_years,
                                location_list=list(LOCATION_COORDS.keys()),
-                               error="年の指定が不正です", labels=None)
+                               error="年の形式が不正です", labels=None)
 
+    if not years:
+        return render_template("index.html", location=location,
+                               valid_years=VALID_YEARS, selected_years=selected_years,
+                               location_list=list(LOCATION_COORDS.keys()),
+                               error="1つ以上の有効な年を選択してください", labels=None)
+
+    # データ取得＆表示
     df, error = load_data(location, years)
     if error:
-        return render_template("index.html", location=location, years_text=years_text,
+        return render_template("index.html", location=location,
+                               valid_years=VALID_YEARS, selected_years=selected_years,
                                location_list=list(LOCATION_COORDS.keys()),
                                error=error, labels=None)
 
@@ -123,5 +136,5 @@ def index():
                              "data": list(df[col]), "borderWidth": 2})
 
     return render_template("index.html", labels=labels, temp_data=temp_data, rain_data=rain_data,
-                           location=location, years_text=years_text,
+                           location=location, valid_years=VALID_YEARS, selected_years=selected_years,
                            location_list=list(LOCATION_COORDS.keys()), error=None)
