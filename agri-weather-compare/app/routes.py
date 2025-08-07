@@ -79,6 +79,16 @@ def load_data(location, years):
                 return None, err
 
         df = pd.read_csv(filepath)
+        if "relative_humidity_2m_mean" not in df.columns:
+            lat, lon = LOCATION_COORDS.get(location, (None, None))
+            if lat is None:
+                return None, f"地域「{location}」の緯度経度が不明です"
+            ok, err = fetch_weather_data(lat, lon, year, location)
+            if not ok:
+                return None, err
+            df = pd.read_csv(filepath)
+            if "relative_humidity_2m_mean" not in df.columns:
+                df["relative_humidity_2m_mean"] = pd.NA
         df["time"] = pd.to_datetime(df["time"])
         df["month"] = df["time"].dt.month
 
@@ -113,6 +123,16 @@ def load_daily_data(location, years, month):
                 raise ValueError(error)
 
         df = pd.read_csv(filepath)
+        if "relative_humidity_2m_mean" not in df.columns:
+            lat, lon = LOCATION_COORDS.get(location, (None, None))
+            if lat is None:
+                raise ValueError(f"{location} の緯度経度が不明です")
+            success, error = fetch_weather_data(lat, lon, year, location)
+            if not success:
+                raise ValueError(error)
+            df = pd.read_csv(filepath)
+            if "relative_humidity_2m_mean" not in df.columns:
+                df["relative_humidity_2m_mean"] = pd.NA
         df["time"] = pd.to_datetime(df["time"])
         df_month = df[df["time"].dt.month == month].copy()
 
