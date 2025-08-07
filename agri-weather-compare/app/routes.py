@@ -149,54 +149,77 @@ def index():
 
     try:
         if mode == "daily":
+            # 指定された月の日別データを読み込む
             data_by_day = load_daily_data(location, years, selected_month)
-            print("✅ data_by_day:", data_by_day)  # ← ここ
 
-            labels = sorted(set(day for df in data_by_day.values()
-                            for day in df.index))
-            print("✅ labels:", labels)  # ← ここ
+            # 全ての年で存在する日付をラベルとして抽出
+            labels = sorted(
+                set(day for df in data_by_day.values() for day in df.index)
+            )
 
-            print("📅 日ラベル:", labels)
-            print("🌡 気温データ:", temp_data)
-            print("☔ 降水データ:", rain_data)
-
+            # グラフ用のデータセットを生成
             temp_data = []
             rain_data = []
-
-        for year, df in data_by_day.items():
-            temp_data[year] = []
-            rain_data[year] = []
-            for day in labels:
-                try:
-                    temp = df["temperature_2m_mean"].loc[day]
-                except KeyError:
-                    temp = None
-                try:
-                    rain = df["precipitation_sum"].loc[day]
-                except KeyError:
-                    rain = None
-                temp_data[year].append(temp)
-                rain_data[year].append(rain)
+            for year, df in data_by_day.items():
+                temps = []
+                rains = []
+                for day in labels:
+                    temps.append(
+                        df["temperature_2m_mean"].loc[day]
+                        if day in df.index else None
+                    )
+                    rains.append(
+                        df["precipitation_sum"].loc[day]
+                        if day in df.index else None
+                    )
+                temp_data.append({
+                    "label": str(year),
+                    "data": temps,
+                    "borderWidth": 2,
+                })
+                rain_data.append({
+                    "label": str(year),
+                    "data": rains,
+                    "borderWidth": 2,
+                })
 
         else:  # monthly
             df, error = load_data(location, years)
             if error:
-                return render_template("index.html", location=location, valid_years=VALID_YEARS,
-                                       selected_years=selected_years, location_list=list(
-                                           LOCATION_COORDS.keys()),
-                                       mode=mode, selected_month=selected_month,
-                                       error=error, labels=[], temp_data=[], rain_data=[])
+                return render_template(
+                    "index.html",
+                    location=location,
+                    valid_years=VALID_YEARS,
+                    selected_years=selected_years,
+                    location_list=list(LOCATION_COORDS.keys()),
+                    mode=mode,
+                    selected_month=selected_month,
+                    error=error,
+                    labels=[],
+                    temp_data=[],
+                    rain_data=[],
+                )
 
             labels = [f"{int(m)}月" for m in df.index]
             temp_data = []
             rain_data = []
             for col in df.columns:
                 if "_temp" in col:
-                    temp_data.append({"label": col.replace(
-                        "_temp", ""), "data": list(df[col]), "borderWidth": 2})
+                    temp_data.append(
+                        {
+                            "label": col.replace("_temp", ""),
+                            "data": list(df[col]),
+                            "borderWidth": 2,
+                        }
+                    )
                 if "_rain" in col:
-                    rain_data.append({"label": col.replace(
-                        "_rain", ""), "data": list(df[col]), "borderWidth": 2})
+                    rain_data.append(
+                        {
+                            "label": col.replace("_rain", ""),
+                            "data": list(df[col]),
+                            "borderWidth": 2,
+                        }
+                    )
 
     except Exception as e:
         return render_template("index.html", location=location, valid_years=VALID_YEARS,
