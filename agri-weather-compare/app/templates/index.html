@@ -52,98 +52,106 @@
     {% endif %}
 
     {% if labels %}
-    <canvas id="tempChart" width="600" height="300"></canvas>
-    <canvas id="rainChart" width="600" height="300"></canvas>
-
+    <div class="chart-tabs">
+        <button class="tab-button active" data-type="temp">気温</button>
+        <button class="tab-button" data-type="rain">降水量</button>
+        <button class="tab-button" data-type="hum">湿度</button>
+    </div>
+    <canvas id="weatherChart" width="600" height="300"></canvas>
 
     <script>
         const labels = {{ labels | tojson}};
         const tempData = {{ temp_data | tojson}};
         const rainData = {{ rain_data | tojson}};
+        const humData = {{ hum_data | tojson}};
         const colorList = {{ colors | tojson}};
 
-        const coloredTempData = tempData.map((dataset, i) => ({
-            ...dataset,
-            borderColor: colorList[i % colorList.length],
-            backgroundColor: colorList[i % colorList.length],
-            fill: false,
-            tension: 0.3
-        }));
+        const colorize = (dataset, i, isLine = true) => {
+            const color = colorList[i % colorList.length];
+            return isLine
+                ? {
+                    ...dataset,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 3,
+                    pointRadius: 3,
+                    fill: false,
+                    tension: 0.3
+                }
+                : {
+                    ...dataset,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 1
+                };
+        };
 
-        const coloredRainData = rainData.map((dataset, i) => ({
-            ...dataset,
-            borderColor: colorList[i % colorList.length],
-            backgroundColor: colorList[i % colorList.length]
-        }));
+        const coloredTempData = tempData.map((d, i) => colorize(d, i, true));
+        const coloredRainData = rainData.map((d, i) => colorize(d, i, false));
+        const coloredHumData = humData.map((d, i) => colorize(d, i, true));
 
-        new Chart(document.getElementById('tempChart'), {
-            type: 'line',
-            data: { labels: labels, datasets: tempData },
-            options: {
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '{{ location }} - {{ selected_month }}月 の {{ "【日別】" if mode == "daily" else "【月別】" }} 平均気温（℃）',
-                        font: { size: 18 },
-                        padding: { top: 10, bottom: 10 }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            font: { size: 12 }
-                        }
-                    }
+        const baseTitle = '{{ location }}{{ " - " + (selected_month | string) + "月" if mode == "daily" else "" }} の {{ "【日別】" if mode == "daily" else "【月別】" }}';
+
+        const createOptions = (title) => ({
+            plugins: {
+                title: {
+                    display: true,
+                    text: title,
+                    font: { size: 20 },
+                    padding: { top: 10, bottom: 10 }
                 },
-                scales: {
-                    x: {
-                        ticks: { font: { size: 12 } }
-                    },
-                    y: {
-                        ticks: { font: { size: 12 } }
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 14,
+                        font: { size: 14 }
                     }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { font: { size: 14 } },
+                    grid: { color: '#e0e0e0' }
+                },
+                y: {
+                    ticks: { font: { size: 14 } },
+                    grid: { color: '#e0e0e0' }
                 }
             }
         });
 
+        const ctx = document.getElementById('weatherChart');
+        let currentChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: labels, datasets: coloredTempData },
+            options: createOptions(`${baseTitle} 平均気温（℃）`)
+        });
 
-        new Chart(document.getElementById('rainChart'), {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: coloredRainData
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '{{ location }} - {{ selected_month }}月 の {{ "【日別】" if mode == "daily" else "【月別】" }} 降水量合計（mm）',
-                        font: { size: 18 },
-                        padding: { top: 10, bottom: 10 }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            boxWidth: 12,
-                            font: { size: 12 }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { font: { size: 12 } }
-                    },
-                    y: {
-                        ticks: { font: { size: 12 } }
-                    }
+        function updateChart(type, datasets, title) {
+            currentChart.destroy();
+            currentChart = new Chart(ctx, {
+                type: type,
+                data: { labels: labels, datasets: datasets },
+                options: createOptions(title)
+            });
+        }
+
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const t = btn.dataset.type;
+                if (t === 'temp') {
+                    updateChart('line', coloredTempData, `${baseTitle} 平均気温（℃）`);
+                } else if (t === 'rain') {
+                    updateChart('bar', coloredRainData, `${baseTitle} 降水量合計（mm）`);
+                } else if (t === 'hum') {
+                    updateChart('line', coloredHumData, `${baseTitle} 平均相対湿度（%）`);
                 }
-            }
-        });    </script>
-
-
+            });
+        });
+    </script>
 
     {% endif %}
 </body>

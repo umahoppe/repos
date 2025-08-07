@@ -82,13 +82,23 @@ def load_data(location, years):
         df["time"] = pd.to_datetime(df["time"])
         df["month"] = df["time"].dt.month
 
-        monthly_avg = df.groupby("month").agg({
-            "temperature_2m_mean": "mean",
-            "precipitation_sum": "sum"
-        }).rename(columns={
-            "temperature_2m_mean": f"{year}_temp",
-            "precipitation_sum": f"{year}_rain"
-        })
+        monthly_avg = (
+            df.groupby("month")
+            .agg(
+                {
+                    "temperature_2m_mean": "mean",
+                    "precipitation_sum": "sum",
+                    "relative_humidity_2m_mean": "mean",
+                }
+            )
+            .rename(
+                columns={
+                    "temperature_2m_mean": f"{year}_temp",
+                    "precipitation_sum": f"{year}_rain",
+                    "relative_humidity_2m_mean": f"{year}_hum",
+                }
+            )
+        )
 
         monthly_data[year] = monthly_avg
 
@@ -119,7 +129,13 @@ def load_daily_data(location, years, month):
         df_month.set_index("day", inplace=True)
 
         # 不足値（例：29日がないなど）への対応
-        df_month = df_month[["temperature_2m_mean", "precipitation_sum"]]
+        df_month = df_month[
+            [
+                "temperature_2m_mean",
+                "precipitation_sum",
+                "relative_humidity_2m_mean",
+            ]
+        ]
         daily_data[year] = df_month
 
     return daily_data
@@ -139,14 +155,14 @@ def index():
                                selected_years=selected_years, location_list=list(
                                    LOCATION_COORDS.keys()),
                                mode=mode, selected_month=selected_month,
-                               error="年の形式が不正です", labels=[], temp_data=[], rain_data=[])
+                               error="年の形式が不正です", labels=[], temp_data=[], rain_data=[], hum_data=[])
 
     if not years:
         return render_template("index.html", location=location, valid_years=VALID_YEARS,
                                selected_years=selected_years, location_list=list(
                                    LOCATION_COORDS.keys()),
                                mode=mode, selected_month=selected_month,
-                               error="1つ以上の有効な年を選択してください", labels=[], temp_data=[], rain_data=[])
+                               error="1つ以上の有効な年を選択してください", labels=[], temp_data=[], rain_data=[], hum_data=[])
 
     try:
         if mode == "daily":
@@ -161,9 +177,11 @@ def index():
             # グラフ用のデータセットを生成
             temp_data = []
             rain_data = []
+            hum_data = []
             for year, df in data_by_day.items():
                 temps = []
                 rains = []
+                hums = []
                 for day in labels:
                     temps.append(
                         df["temperature_2m_mean"].loc[day]
@@ -173,16 +191,31 @@ def index():
                         df["precipitation_sum"].loc[day]
                         if day in df.index else None
                     )
-                temp_data.append({
-                    "label": str(year),
-                    "data": temps,
-                    "borderWidth": 2,
-                })
-                rain_data.append({
-                    "label": str(year),
-                    "data": rains,
-                    "borderWidth": 2,
-                })
+                    hums.append(
+                        df["relative_humidity_2m_mean"].loc[day]
+                        if day in df.index else None
+                    )
+                temp_data.append(
+                    {
+                        "label": str(year),
+                        "data": temps,
+                        "borderWidth": 3,
+                    }
+                )
+                rain_data.append(
+                    {
+                        "label": str(year),
+                        "data": rains,
+                        "borderWidth": 3,
+                    }
+                )
+                hum_data.append(
+                    {
+                        "label": str(year),
+                        "data": hums,
+                        "borderWidth": 3,
+                    }
+                )
 
         else:  # monthly
             df, error = load_data(location, years)
@@ -199,18 +232,20 @@ def index():
                     labels=[],
                     temp_data=[],
                     rain_data=[],
+                    hum_data=[],
                 )
 
             labels = [f"{int(m)}月" for m in df.index]
             temp_data = []
             rain_data = []
+            hum_data = []
             for col in df.columns:
                 if "_temp" in col:
                     temp_data.append(
                         {
                             "label": col.replace("_temp", ""),
                             "data": list(df[col]),
-                            "borderWidth": 2,
+                            "borderWidth": 3,
                         }
                     )
                 if "_rain" in col:
@@ -218,7 +253,15 @@ def index():
                         {
                             "label": col.replace("_rain", ""),
                             "data": list(df[col]),
-                            "borderWidth": 2,
+                            "borderWidth": 3,
+                        }
+                    )
+                if "_hum" in col:
+                    hum_data.append(
+                        {
+                            "label": col.replace("_hum", ""),
+                            "data": list(df[col]),
+                            "borderWidth": 3,
                         }
                     )
 
@@ -227,13 +270,24 @@ def index():
                                selected_years=selected_years, location_list=list(
                                    LOCATION_COORDS.keys()),
                                mode=mode, selected_month=selected_month,
-                               error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[])
+                               error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[], hum_data=[])
 
     colors = [
-        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0",
-        "#9966FF", "#FF9F40", "#8AC926", "#6A4C93"
+        "#1b9e77", "#d95f02", "#7570b3", "#e7298a",
+        "#66a61e", "#e6ab02", "#a6761d", "#666666"
     ]
-    return render_template("index.html", labels=labels, temp_data=temp_data, rain_data=rain_data,
-                           location=location, valid_years=VALID_YEARS, selected_years=selected_years,
-                           location_list=list(LOCATION_COORDS.keys()), mode=mode, selected_month=selected_month,
-                           error=None, colors=colors)
+    return render_template(
+        "index.html",
+        labels=labels,
+        temp_data=temp_data,
+        rain_data=rain_data,
+        hum_data=hum_data,
+        location=location,
+        valid_years=VALID_YEARS,
+        selected_years=selected_years,
+        location_list=list(LOCATION_COORDS.keys()),
+        mode=mode,
+        selected_month=selected_month,
+        error=None,
+        colors=colors,
+    )
