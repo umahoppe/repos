@@ -16,7 +16,11 @@ def fetch_weather_data(lat, lon, year, location_name):
         "longitude": lon,
         "start_date": start_date,
         "end_date": end_date,
-        "daily": ["temperature_2m_mean", "precipitation_sum"],
+        "daily": [
+            "temperature_2m_mean",
+            "precipitation_sum",
+            "relative_humidity_2m_mean",
+        ],
         "timezone": "Asia/Tokyo"
     }
 
