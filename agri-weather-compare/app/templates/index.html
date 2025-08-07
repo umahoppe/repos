@@ -1,6 +1,11 @@
 <!-- HTMLテンプレートのトップページ -->
 <!DOCTYPE html>
 <html lang="ja">
+<pre>
+    labels: {{ labels }}
+    temp_data: {{ temp_data }}
+    rain_data: {{ rain_data }}
+    </pre>
 
 <head>
     <meta charset="UTF-8">
@@ -13,6 +18,12 @@
     <h1>🌾 地域・年別 気象データ比較</h1>
 
     <form method="get">
+        <label>比較モード：</label>
+        <select name="mode">
+            <option value="monthly" {% if mode=='monthly' %}selected{% endif %}>月ごと比較</option>
+            <option value="daily" {% if mode=='daily' %}selected{% endif %}>日ごと比較</option>
+        </select>
+
         <label>地域：</label>
         <select name="location">
             {% for name in location_list %}
@@ -27,8 +38,18 @@
             {% endfor %}
         </select>
 
+        {% if mode == 'daily' %}
+        <label>比較月：</label>
+        <select name="month">
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if m==selected_month %}selected{% endif %}>{{ m }}月</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+
         <button type="submit">表示</button>
     </form>
+
 
 
     {% if error %}

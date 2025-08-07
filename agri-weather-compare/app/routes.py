@@ -95,46 +95,117 @@ def load_data(location, years):
     return result, None
 
 
+def load_daily_data(location, years, month):
+    daily_data = {}
+
+    for year in years:
+        filepath = f"data/raw/{location}/{year}.csv"
+
+        if not os.path.exists(filepath):
+            lat, lon = LOCATION_COORDS.get(location, (None, None))
+            if lat is None:
+                raise ValueError(f"{location} の緯度経度が不明です")
+            success, error = fetch_weather_data(lat, lon, year, location)
+            if not success:
+                raise ValueError(error)
+
+        df = pd.read_csv(filepath)
+        df["time"] = pd.to_datetime(df["time"])
+        df_month = df[df["time"].dt.month == month].copy()
+
+        # 日番号（1日〜31日）でインデックス化
+        df_month["day"] = df_month["time"].dt.day
+        df_month.set_index("day", inplace=True)
+
+        # 不足値（例：29日がないなど）への対応
+        df_month = df_month[["temperature_2m_mean", "precipitation_sum"]]
+        daily_data[year] = df_month
+
+    return daily_data
+
+
 @app.route('/')
 def index():
     location = request.args.get('location', 'Tokyo')
     selected_years = request.args.getlist('years')
+    mode = request.args.get('mode', 'monthly')
+    selected_month = request.args.get('month', default=3, type=int)
 
     try:
-        # 入力された年を整数化＆有効年だけ残す
         years = [int(y) for y in selected_years if int(y) in VALID_YEARS]
     except ValueError:
-        return render_template("index.html", location=location,
-                               valid_years=VALID_YEARS, selected_years=selected_years,
-                               location_list=list(LOCATION_COORDS.keys()),
-                               error="年の形式が不正です", labels=None)
+        return render_template("index.html", location=location, valid_years=VALID_YEARS,
+                               selected_years=selected_years, location_list=list(
+                                   LOCATION_COORDS.keys()),
+                               mode=mode, selected_month=selected_month,
+                               error="年の形式が不正です", labels=[], temp_data=[], rain_data=[])
 
     if not years:
-        return render_template("index.html", location=location,
-                               valid_years=VALID_YEARS, selected_years=selected_years,
-                               location_list=list(LOCATION_COORDS.keys()),
-                               error="1つ以上の有効な年を選択してください", labels=None)
+        return render_template("index.html", location=location, valid_years=VALID_YEARS,
+                               selected_years=selected_years, location_list=list(
+                                   LOCATION_COORDS.keys()),
+                               mode=mode, selected_month=selected_month,
+                               error="1つ以上の有効な年を選択してください", labels=[], temp_data=[], rain_data=[])
 
-    # データ取得＆表示
-    df, error = load_data(location, years)
-    if error:
-        return render_template("index.html", location=location,
-                               valid_years=VALID_YEARS, selected_years=selected_years,
-                               location_list=list(LOCATION_COORDS.keys()),
-                               error=error, labels=None)
+    try:
+        if mode == "daily":
+            data_by_day = load_daily_data(location, years, selected_month)
+            print("✅ data_by_day:", data_by_day)  # ← ここ
 
-    labels = [f"{int(m)}月" for m in df.index]
+            labels = sorted(set(day for df in data_by_day.values()
+                            for day in df.index))
+            print("✅ labels:", labels)  # ← ここ
 
-    temp_data = []
-    rain_data = []
-    for col in df.columns:
-        if "_temp" in col:
-            temp_data.append({"label": col.replace("_temp", ""),
-                             "data": list(df[col]), "borderWidth": 2})
-        if "_rain" in col:
-            rain_data.append({"label": col.replace("_rain", ""),
-                             "data": list(df[col]), "borderWidth": 2})
+            print("📅 日ラベル:", labels)
+            print("🌡 気温データ:", temp_data)
+            print("☔ 降水データ:", rain_data)
+
+            temp_data = []
+            rain_data = []
+
+        for year, df in data_by_day.items():
+            temp_data[year] = []
+            rain_data[year] = []
+            for day in labels:
+                try:
+                    temp = df["temperature_2m_mean"].loc[day]
+                except KeyError:
+                    temp = None
+                try:
+                    rain = df["precipitation_sum"].loc[day]
+                except KeyError:
+                    rain = None
+                temp_data[year].append(temp)
+                rain_data[year].append(rain)
+
+        else:  # monthly
+            df, error = load_data(location, years)
+            if error:
+                return render_template("index.html", location=location, valid_years=VALID_YEARS,
+                                       selected_years=selected_years, location_list=list(
+                                           LOCATION_COORDS.keys()),
+                                       mode=mode, selected_month=selected_month,
+                                       error=error, labels=[], temp_data=[], rain_data=[])
+
+            labels = [f"{int(m)}月" for m in df.index]
+            temp_data = []
+            rain_data = []
+            for col in df.columns:
+                if "_temp" in col:
+                    temp_data.append({"label": col.replace(
+                        "_temp", ""), "data": list(df[col]), "borderWidth": 2})
+                if "_rain" in col:
+                    rain_data.append({"label": col.replace(
+                        "_rain", ""), "data": list(df[col]), "borderWidth": 2})
+
+    except Exception as e:
+        return render_template("index.html", location=location, valid_years=VALID_YEARS,
+                               selected_years=selected_years, location_list=list(
+                                   LOCATION_COORDS.keys()),
+                               mode=mode, selected_month=selected_month,
+                               error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[])
 
     return render_template("index.html", labels=labels, temp_data=temp_data, rain_data=rain_data,
                            location=location, valid_years=VALID_YEARS, selected_years=selected_years,
-                           location_list=list(LOCATION_COORDS.keys()), error=None)
+                           location_list=list(LOCATION_COORDS.keys()), mode=mode, selected_month=selected_month,
+                           error=None)
