@@ -176,12 +176,12 @@ def index():
                 temp_data.append({
                     "label": str(year),
                     "data": temps,
-                    "borderWidth": 2,
+                    "borderWidth": 3,
                 })
                 rain_data.append({
                     "label": str(year),
                     "data": rains,
-                    "borderWidth": 2,
+                    "borderWidth": 3,
                 })
 
         else:  # monthly
@@ -210,7 +210,7 @@ def index():
                         {
                             "label": col.replace("_temp", ""),
                             "data": list(df[col]),
-                            "borderWidth": 2,
+                            "borderWidth": 3,
                         }
                     )
                 if "_rain" in col:
@@ -218,7 +218,7 @@ def index():
                         {
                             "label": col.replace("_rain", ""),
                             "data": list(df[col]),
-                            "borderWidth": 2,
+                            "borderWidth": 3,
                         }
                     )
 
@@ -230,8 +230,8 @@ def index():
                                error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[])
 
     colors = [
-        "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0",
-        "#9966FF", "#FF9F40", "#8AC926", "#6A4C93"
+        "#1b9e77", "#d95f02", "#7570b3", "#e7298a",
+        "#66a61e", "#e6ab02", "#a6761d", "#666666"
     ]
     return render_template("index.html", labels=labels, temp_data=temp_data, rain_data=rain_data,
                            location=location, valid_years=VALID_YEARS, selected_years=selected_years,
