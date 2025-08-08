@@ -93,6 +93,17 @@ def _series_color_for_year(year: int, idx: int) -> str:
     return _PALETTE[idx % len(_PALETTE)]
 
 
+def _series_stats(vals, ndigits=1):
+    """None を除外して min/max/avg を返す。空なら None。"""
+    xs = [v for v in vals if v is not None]
+    if not xs:
+        return {"seriesMin": None, "seriesMax": None, "seriesAvg": None}
+    smin = round(min(xs), ndigits)
+    smax = round(max(xs), ndigits)
+    savg = round(sum(xs) / len(xs), ndigits)
+    return {"seriesMin": smin, "seriesMax": smax, "seriesAvg": savg}
+
+
 def load_data(location, years):
     monthly_data = {}
     for year in years:
@@ -230,13 +241,17 @@ def index():
                 hums = [float(df["relative_humidity_2m_mean"].loc[d])
                         if d in df.index else None for d in labels]
 
+                temp_stats = _series_stats(temps, ndigits=1)
+                rain_stats = _series_stats(rains, ndigits=1)
+                hum_stats = _series_stats(hums,  ndigits=1)
+
                 temp_data.append({"label": str(year), "data": temps, "borderWidth": 3,
                                   "borderColor": color, "backgroundColor": color, "tension": 0.3,
-                                  "pointRadius": 3, "fill": False})
+                                  "pointRadius": 3, "fill": False, **temp_stats})
                 rain_data.append({"label": str(year), "data": rains, "borderWidth": 1,
-                                  "borderColor": color, "backgroundColor": color})
+                                  "borderColor": color, "backgroundColor": color, **rain_stats})
                 hum_data.append({"label": str(year), "data": hums, "borderWidth": 2,
-                                 "borderColor": color, "backgroundColor": color, "borderDash": [6, 3]})
+                                 "borderColor": color, "backgroundColor": color, "borderDash": [6, 3], **hum_stats})
 
         else:
             # ── monthly は data_by_day を一切参照しない ──
@@ -262,9 +277,10 @@ def index():
                     s = pd.to_numeric(df[col], errors="coerce")
                     vals = [float(x) if pd.notna(
                         x) else None for x in s.tolist()]
+                    stats = _series_stats(vals, ndigits=1)
                     temp_data.append({"label": str(year), "data": vals, "borderWidth": 3,
                                       "borderColor": color, "backgroundColor": color,
-                                      "tension": 0.3, "pointRadius": 3, "fill": False})
+                                      "tension": 0.3, "pointRadius": 3, "fill": False, **stats, })
 
                 if "_rain" in col:
                     year = int(col.split("_")[0])
@@ -273,8 +289,9 @@ def index():
                     s = pd.to_numeric(df[col], errors="coerce")
                     vals = [float(x) if pd.notna(
                         x) else None for x in s.tolist()]
+                    stats = _series_stats(vals, ndigits=1)
                     rain_data.append({"label": str(year), "data": vals, "borderWidth": 1,
-                                      "borderColor": color, "backgroundColor": color})
+                                      "borderColor": color, "backgroundColor": color, **stats})
 
                 if "_humidity" in col:
                     year = int(col.split("_")[0])
@@ -283,8 +300,9 @@ def index():
                     s = pd.to_numeric(df[col], errors="coerce")
                     vals = [float(x) if pd.notna(
                         x) else None for x in s.tolist()]
+                    stats = _series_stats(vals, ndigits=1)
                     hum_data.append({"label": str(year), "data": vals, "borderWidth": 2,
-                                     "borderColor": color, "backgroundColor": color, "borderDash": [6, 3]})
+                                     "borderColor": color, "backgroundColor": color, "borderDash": [6, 3], **stats})
 
     except Exception as e:
         return render_template("index.html",
