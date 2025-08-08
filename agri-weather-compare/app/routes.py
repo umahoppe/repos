@@ -183,162 +183,124 @@ def index():
     mode = request.args.get('mode', 'monthly')
     selected_month = request.args.get('month', default=3, type=int)
 
+    # ★ 先に安全な初期化（exceptでも参照できるように）
+    labels, temp_data, rain_data, hum_data = [], [], [], []
+    data_by_day = None  # ← ここ大事
+
     try:
         years = [int(y) for y in selected_years if int(y) in VALID_YEARS]
     except ValueError:
-        return render_template("index.html", location=location, valid_years=VALID_YEARS,
-                               selected_years=selected_years, location_list=list(
-                                   LOCATION_COORDS.keys()),
-                               mode=mode, selected_month=selected_month,
-                               error="年の形式が不正です", labels=[], temp_data=[], rain_data=[], hum_data=[])
+        return render_template("index.html",
+                               location=location,
+                               valid_years=VALID_YEARS,
+                               selected_years=selected_years,
+                               location_list=list(LOCATION_COORDS.keys()),
+                               mode=mode,
+                               selected_month=selected_month,
+                               error="年の形式が不正です",
+                               labels=labels, temp_data=temp_data, rain_data=rain_data, hum_data=hum_data)
 
     if not years:
-        return render_template("index.html", location=location, valid_years=VALID_YEARS,
-                               selected_years=selected_years, location_list=list(
-                                   LOCATION_COORDS.keys()),
-                               mode=mode, selected_month=selected_month,
-                               error="1つ以上の有効な年を選択してください", labels=[], temp_data=[], rain_data=[], hum_data=[])
+        return render_template("index.html",
+                               location=location,
+                               valid_years=VALID_YEARS,
+                               selected_years=selected_years,
+                               location_list=list(LOCATION_COORDS.keys()),
+                               mode=mode,
+                               selected_month=selected_month,
+                               error="1つ以上の有効な年を選択してください",
+                               labels=labels, temp_data=temp_data, rain_data=rain_data, hum_data=hum_data)
 
     try:
         if mode == "daily":
-            # 指定された月の日別データを読み込む
+            # ── daily だけが data_by_day を使う ──
             data_by_day = load_daily_data(location, years, selected_month)
 
-            # 全ての年で存在する日付をラベルとして抽出
-            labels = sorted(
-                set(day for df in data_by_day.values() for day in df.index)
-            )
+            labels = sorted(set(day for df in data_by_day.values()
+                            for day in df.index))
 
-            # グラフ用のデータセットを生成
-        temp_data = []
-        rain_data = []
-        hum_data = []
+            temp_data, rain_data, hum_data = [], [], []
+            for idx, (year, df) in enumerate(sorted(data_by_day.items(), key=lambda x: x[0])):
+                color = _series_color_for_year(year, idx)
 
-        # 年の順番に依存しないよう、見た目の安定性のためにsortしておくと◎
-        for idx, (year, df) in enumerate(sorted(data_by_day.items(), key=lambda x: x[0])):
-            color = _series_color_for_year(year, idx)
+                temps = [float(df["temperature_2m_mean"].loc[d])
+                         if d in df.index else None for d in labels]
+                rains = [float(df["precipitation_sum"].loc[d])
+                         if d in df.index else None for d in labels]
+                hums = [float(df["relative_humidity_2m_mean"].loc[d])
+                        if d in df.index else None for d in labels]
 
-            temps, rains, hums = [], [], []
-            for day in labels:
-                temps.append(
-                    float(df["temperature_2m_mean"].loc[day]) if day in df.index else None)
-                rains.append(
-                    float(df["precipitation_sum"].loc[day]) if day in df.index else None)
-                hums.append(
-                    float(df["relative_humidity_2m_mean"].loc[day]) if day in df.index else None)
+                temp_data.append({"label": str(year), "data": temps, "borderWidth": 3,
+                                  "borderColor": color, "backgroundColor": color, "tension": 0.3,
+                                  "pointRadius": 3, "fill": False})
+                rain_data.append({"label": str(year), "data": rains, "borderWidth": 1,
+                                  "borderColor": color, "backgroundColor": color})
+                hum_data.append({"label": str(year), "data": hums, "borderWidth": 2,
+                                 "borderColor": color, "backgroundColor": color, "borderDash": [6, 3]})
 
-            temp_data.append({
-                "label": str(year),
-                "data": temps,
-                "borderWidth": 3,
-                "borderColor": color,
-                "backgroundColor": color,
-                "tension": 0.3,
-                "pointRadius": 3,
-                "fill": False
-            })
-            rain_data.append({
-                "label": str(year),
-                "data": rains,
-                "borderWidth": 1,
-                "borderColor": color,
-                "backgroundColor": color
-            })
-            hum_data.append({
-                "label": str(year),
-                "data": hums,
-                "borderWidth": 2,
-                "borderColor": color,
-                "backgroundColor": color,
-                # 湿度は線種を変えると識別しやすい（前端はChart.js側）
-                "borderDash": [6, 3]
-            })
-
-        else:  # monthly
+        else:
+            # ── monthly は data_by_day を一切参照しない ──
             df, error = load_data(location, years)
             if error:
-                return render_template(
-                    "index.html",
-                    location=location,
-                    valid_years=VALID_YEARS,
-                    selected_years=selected_years,
-                    location_list=list(LOCATION_COORDS.keys()),
-                    mode=mode,
-                    selected_month=selected_month,
-                    error=error,
-                    labels=[],
-                    temp_data=[],
-                    rain_data=[],
-                    hum_data=[],
-                )
+                return render_template("index.html",
+                                       location=location, valid_years=VALID_YEARS,
+                                       selected_years=selected_years, location_list=list(
+                                           LOCATION_COORDS.keys()),
+                                       mode=mode, selected_month=selected_month,
+                                       error=error,
+                                       labels=labels, temp_data=temp_data, rain_data=rain_data, hum_data=hum_data)
 
-        labels = [f"{int(m)}月" for m in df.index]
-        temp_data, rain_data, hum_data = [], [], []
+            labels = [f"{int(m)}月" for m in df.index]
+            temp_data, rain_data, hum_data = [], [], []
 
-        idx_t = idx_r = idx_h = 0  # 年ごとの色割当て用インデックス
+            idx_t = idx_r = idx_h = 0
+            for col in df.columns:
+                if "_temp" in col:
+                    year = int(col.split("_")[0])
+                    color = _series_color_for_year(year, idx_t)
+                    idx_t += 1
+                    s = pd.to_numeric(df[col], errors="coerce")
+                    vals = [float(x) if pd.notna(
+                        x) else None for x in s.tolist()]
+                    temp_data.append({"label": str(year), "data": vals, "borderWidth": 3,
+                                      "borderColor": color, "backgroundColor": color,
+                                      "tension": 0.3, "pointRadius": 3, "fill": False})
 
-        for col in df.columns:
-            if "_temp" in col:
-                year = int(col.split("_")[0])
-                color = _series_color_for_year(year, idx_t)
-                idx_t += 1
-                temp_data.append({
-                    "label": str(year),
-                    "data": list(map(float, df[col])),
-                    "borderWidth": 3,
-                    "borderColor": color,
-                    "backgroundColor": color,
-                    "tension": 0.3,
-                    "pointRadius": 3,
-                    "fill": False
-                })
-            if "_rain" in col:
-                year = int(col.split("_")[0])
-                color = _series_color_for_year(year, idx_r)
-                idx_r += 1
-                rain_data.append({
-                    "label": str(year),
-                    "data": list(map(float, df[col])),
-                    "borderWidth": 1,
-                    "borderColor": color,
-                    "backgroundColor": color
-                })
-            if "_humidity" in col:
-                year = int(col.split("_")[0])
-                color = _series_color_for_year(year, idx_h)
-                idx_h += 1
-                hum_data.append({
-                    "label": str(year),
-                    "data": list(map(float, df[col])),
-                    "borderWidth": 2,
-                    "borderColor": color,
-                    "backgroundColor": color,
-                    "borderDash": [6, 3]
-                })
+                if "_rain" in col:
+                    year = int(col.split("_")[0])
+                    color = _series_color_for_year(year, idx_r)
+                    idx_r += 1
+                    s = pd.to_numeric(df[col], errors="coerce")
+                    vals = [float(x) if pd.notna(
+                        x) else None for x in s.tolist()]
+                    rain_data.append({"label": str(year), "data": vals, "borderWidth": 1,
+                                      "borderColor": color, "backgroundColor": color})
+
+                if "_humidity" in col:
+                    year = int(col.split("_")[0])
+                    color = _series_color_for_year(year, idx_h)
+                    idx_h += 1
+                    s = pd.to_numeric(df[col], errors="coerce")
+                    vals = [float(x) if pd.notna(
+                        x) else None for x in s.tolist()]
+                    hum_data.append({"label": str(year), "data": vals, "borderWidth": 2,
+                                     "borderColor": color, "backgroundColor": color, "borderDash": [6, 3]})
 
     except Exception as e:
-        return render_template("index.html", location=location, valid_years=VALID_YEARS,
+        return render_template("index.html",
+                               location=location, valid_years=VALID_YEARS,
                                selected_years=selected_years, location_list=list(
                                    LOCATION_COORDS.keys()),
                                mode=mode, selected_month=selected_month,
-                               error=f"処理中にエラーが発生しました: {e}", labels=[], temp_data=[], rain_data=[], hum_data=[])
+                               error=f"処理中にエラーが発生しました: {e}",
+                               labels=labels, temp_data=temp_data, rain_data=rain_data, hum_data=hum_data)
 
     colors = [
         "#1b9e77", "#d95f02", "#7570b3", "#e7298a",
         "#66a61e", "#e6ab02", "#a6761d", "#666666"
     ]
-    return render_template(
-        "index.html",
-        labels=labels,
-        temp_data=temp_data,
-        rain_data=rain_data,
-        hum_data=hum_data,
-        location=location,
-        valid_years=VALID_YEARS,
-        selected_years=selected_years,
-        location_list=list(LOCATION_COORDS.keys()),
-        mode=mode,
-        selected_month=selected_month,
-        error=None,
-        colors=colors,
-    )
+    return render_template("index.html",
+                           labels=labels, temp_data=temp_data, rain_data=rain_data, hum_data=hum_data,
+                           location=location, valid_years=VALID_YEARS, selected_years=selected_years,
+                           location_list=list(LOCATION_COORDS.keys()), mode=mode, selected_month=selected_month,
+                           error=None, colors=colors)
