@@ -5,7 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <title>気象データ比較</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js の UMD 版を明示的に読み込み、グローバルな Chart オブジェクトを提供する -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
