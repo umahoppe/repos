@@ -55,12 +55,14 @@
     {% if labels %}
     <canvas id="tempChart" width="600" height="300"></canvas>
     <canvas id="rainChart" width="600" height="300"></canvas>
+    <canvas id="humChart" width="600" height="300"></canvas>
 
 
     <script>
         const labels = {{ labels | tojson}};
         const tempData = {{ temp_data | tojson}};
         const rainData = {{ rain_data | tojson}};
+        const humData = {{ hum_data | tojson}};
         const colorList = {{ colors | tojson}};
 
         // 変更後（dataset側の色を優先）
@@ -86,6 +88,20 @@
                 borderColor: bc,
                 backgroundColor: bg,
                 borderWidth: dataset.borderWidth ?? 1
+            };
+        });
+
+        const coloredHumData = humData.map((dataset, i) => {
+            const bc = dataset.borderColor || colorList[i % colorList.length];
+            const bg = dataset.backgroundColor || bc;
+            return {
+                ...dataset,
+                borderColor: bc,
+                backgroundColor: bg,
+                borderWidth: dataset.borderWidth ?? 3,
+                pointRadius: dataset.pointRadius ?? 3,
+                tension: dataset.tension ?? 0.3,
+                fill: dataset.fill ?? false
             };
         });
 
@@ -178,6 +194,57 @@
                             return hasStats
                                 ? `最小 ${ds.seriesMin}mm / 最大 ${ds.seriesMax}mm / 平均 ${ds.seriesAvg}mm`
                                 : '';
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 14 } },
+                        grid: { color: '#e0e0e0' }
+                    },
+                    y: {
+                        ticks: { font: { size: 14 } },
+                        grid: { color: '#e0e0e0' }
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('humChart'), {
+            type: 'line',
+            data: { labels: labels, datasets: coloredHumData },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '{{ location }} - {{ selected_month }}月 の {{ "【日別】" if mode == "daily" else "【月別】" }} 平均湿度（%）',
+                        font: { size: 20 },
+                        padding: { top: 10, bottom: 10 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 14,
+                            font: { size: 14 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            // 1行目：通常の値表示
+                            label: function (ctx) {
+                                const v = ctx.parsed.y;
+                                if (v == null || isNaN(v)) return `${ctx.dataset.label}: データなし`;
+                                return `${ctx.dataset.label}: ${v.toFixed(1)}%`;
+                            },
+                            // 2行目：統計情報（datasetに埋めたやつ）
+                            afterLabel: function (ctx) {
+                                const ds = ctx.dataset;
+                                const hasStats = ds.seriesMin != null && ds.seriesMax != null && ds.seriesAvg != null;
+                                return hasStats
+                                    ? `最小 ${ds.seriesMin}% / 最大 ${ds.seriesMax}% / 平均 ${ds.seriesAvg}%`
+                                    : '';
+                            }
                         }
                     }
                 },
