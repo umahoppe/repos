@@ -64,6 +64,34 @@ LOCATION_COORDS = {
     "Okinawa": (26.2125, 127.68111)
 }
 
+# 年ごとに固定の色を割り当てるためのマッピング
+color_map = {
+    2019: '#1f77b4',
+    2020: '#ff7f0e',
+    2021: '#2ca02c',
+    2022: '#d62728',
+    2023: '#9467bd',
+    2024: '#8c564b',
+    2025: '#e377c2',
+}
+# 予備のパレット（color_mapに無い年のフォールバック用）
+_PALETTE = [
+    "#1b9e77", "#d95f02", "#7570b3", "#e7298a",
+    "#66a61e", "#e6ab02", "#a6761d", "#666666",
+    "#17becf", "#bcbd22", "#7f7f7f"
+]
+
+
+def _series_color_for_year(year: int, idx: int) -> str:
+    """年に対応する色を返す。color_mapに無ければパレットから割当て。"""
+    try:
+        y = int(year)
+    except Exception:
+        y = year
+    if y in color_map:
+        return color_map[y]
+    return _PALETTE[idx % len(_PALETTE)]
+
 
 def load_data(location, years):
     monthly_data = {}
@@ -141,7 +169,8 @@ def load_daily_data(location, years, month):
         df_month.set_index("day", inplace=True)
 
         # 不足値（例：29日がないなど）への対応
-        df_month = df_month[["temperature_2m_mean", "precipitation_sum", "relative_humidity_2m_mean"]]
+        df_month = df_month[["temperature_2m_mean",
+                             "precipitation_sum", "relative_humidity_2m_mean"]]
         daily_data[year] = df_month
 
     return daily_data
@@ -181,41 +210,49 @@ def index():
             )
 
             # グラフ用のデータセットを生成
-            temp_data = []
-            rain_data = []
-            hum_data = []
-            for year, df in data_by_day.items():
-                temps = []
-                rains = []
-                hums = []
-                for day in labels:
-                    temps.append(
-                        float(df["temperature_2m_mean"].loc[day])
-                        if day in df.index else None
-                    )
-                    rains.append(
-                        float(df["precipitation_sum"].loc[day])
-                        if day in df.index else None
-                    )
-                    hums.append(
-                        float(df["relative_humidity_2m_mean"].loc[day])
-                        if day in df.index else None
-                    )
-                temp_data.append({
-                    "label": str(year),
-                    "data": temps,
-                    "borderWidth": 3,
-                })
-                rain_data.append({
-                    "label": str(year),
-                    "data": rains,
-                    "borderWidth": 3,
-                })
-                hum_data.append({
-                    "label": str(year),
-                    "data": hums,
-                    "borderWidth": 3,
-                })
+        temp_data = []
+        rain_data = []
+        hum_data = []
+
+        # 年の順番に依存しないよう、見た目の安定性のためにsortしておくと◎
+        for idx, (year, df) in enumerate(sorted(data_by_day.items(), key=lambda x: x[0])):
+            color = _series_color_for_year(year, idx)
+
+            temps, rains, hums = [], [], []
+            for day in labels:
+                temps.append(
+                    float(df["temperature_2m_mean"].loc[day]) if day in df.index else None)
+                rains.append(
+                    float(df["precipitation_sum"].loc[day]) if day in df.index else None)
+                hums.append(
+                    float(df["relative_humidity_2m_mean"].loc[day]) if day in df.index else None)
+
+            temp_data.append({
+                "label": str(year),
+                "data": temps,
+                "borderWidth": 3,
+                "borderColor": color,
+                "backgroundColor": color,
+                "tension": 0.3,
+                "pointRadius": 3,
+                "fill": False
+            })
+            rain_data.append({
+                "label": str(year),
+                "data": rains,
+                "borderWidth": 1,
+                "borderColor": color,
+                "backgroundColor": color
+            })
+            hum_data.append({
+                "label": str(year),
+                "data": hums,
+                "borderWidth": 2,
+                "borderColor": color,
+                "backgroundColor": color,
+                # 湿度は線種を変えると識別しやすい（前端はChart.js側）
+                "borderDash": [6, 3]
+            })
 
         else:  # monthly
             df, error = load_data(location, years)
@@ -235,35 +272,49 @@ def index():
                     hum_data=[],
                 )
 
-            labels = [f"{int(m)}月" for m in df.index]
-            temp_data = []
-            rain_data = []
-            hum_data = []
-            for col in df.columns:
-                if "_temp" in col:
-                    temp_data.append(
-                        {
-                            "label": col.replace("_temp", ""),
-                            "data": list(map(float, df[col])),
-                            "borderWidth": 3,
-                        }
-                    )
-                if "_rain" in col:
-                    rain_data.append(
-                        {
-                            "label": col.replace("_rain", ""),
-                            "data": list(map(float, df[col])),
-                            "borderWidth": 3,
-                        }
-                    )
-                if "_humidity" in col:
-                    hum_data.append(
-                        {
-                            "label": col.replace("_humidity", ""),
-                            "data": list(map(float, df[col])),
-                            "borderWidth": 3,
-                        }
-                    )
+        labels = [f"{int(m)}月" for m in df.index]
+        temp_data, rain_data, hum_data = [], [], []
+
+        idx_t = idx_r = idx_h = 0  # 年ごとの色割当て用インデックス
+
+        for col in df.columns:
+            if "_temp" in col:
+                year = int(col.split("_")[0])
+                color = _series_color_for_year(year, idx_t)
+                idx_t += 1
+                temp_data.append({
+                    "label": str(year),
+                    "data": list(map(float, df[col])),
+                    "borderWidth": 3,
+                    "borderColor": color,
+                    "backgroundColor": color,
+                    "tension": 0.3,
+                    "pointRadius": 3,
+                    "fill": False
+                })
+            if "_rain" in col:
+                year = int(col.split("_")[0])
+                color = _series_color_for_year(year, idx_r)
+                idx_r += 1
+                rain_data.append({
+                    "label": str(year),
+                    "data": list(map(float, df[col])),
+                    "borderWidth": 1,
+                    "borderColor": color,
+                    "backgroundColor": color
+                })
+            if "_humidity" in col:
+                year = int(col.split("_")[0])
+                color = _series_color_for_year(year, idx_h)
+                idx_h += 1
+                hum_data.append({
+                    "label": str(year),
+                    "data": list(map(float, df[col])),
+                    "borderWidth": 2,
+                    "borderColor": color,
+                    "backgroundColor": color,
+                    "borderDash": [6, 3]
+                })
 
     except Exception as e:
         return render_template("index.html", location=location, valid_years=VALID_YEARS,

@@ -62,22 +62,31 @@
         const rainData = {{ rain_data | tojson}};
         const colorList = {{ colors | tojson}};
 
-        const coloredTempData = tempData.map((dataset, i) => ({
-            ...dataset,
-            borderColor: colorList[i % colorList.length],
-            backgroundColor: colorList[i % colorList.length],
-            borderWidth: 3,
-            pointRadius: 3,
-            fill: false,
-            tension: 0.3
-        }));
+        // 変更後（dataset側の色を優先）
+        const coloredTempData = tempData.map((dataset, i) => {
+            const bc = dataset.borderColor || colorList[i % colorList.length];
+            const bg = dataset.backgroundColor || bc;
+            return {
+                ...dataset,
+                borderColor: bc,
+                backgroundColor: bg,
+                borderWidth: dataset.borderWidth ?? 3,
+                pointRadius: dataset.pointRadius ?? 3,
+                tension: dataset.tension ?? 0.3,
+                fill: dataset.fill ?? false
+            };
+        });
 
-        const coloredRainData = rainData.map((dataset, i) => ({
-            ...dataset,
-            borderColor: colorList[i % colorList.length],
-            backgroundColor: colorList[i % colorList.length],
-            borderWidth: 1
-        }));
+        const coloredRainData = rainData.map((dataset, i) => {
+            const bc = dataset.borderColor || colorList[i % colorList.length];
+            const bg = dataset.backgroundColor || bc;
+            return {
+                ...dataset,
+                borderColor: bc,
+                backgroundColor: bg,
+                borderWidth: dataset.borderWidth ?? 1
+            };
+        });
 
         new Chart(document.getElementById('tempChart'), {
             type: 'line',
