@@ -179,21 +179,21 @@
                             boxWidth: 14,
                             font: { size: 14 }
                         }
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (ctx) {
-                            const v = ctx.parsed.y;
-                            if (v == null || isNaN(v)) return `${ctx.dataset.label}: データなし`;
-                            return `${ctx.dataset.label}: ${v.toFixed(1)}mm`;
-                        },
-                        afterLabel: function (ctx) {
-                            const ds = ctx.dataset;
-                            const hasStats = ds.seriesMin != null && ds.seriesMax != null && ds.seriesAvg != null;
-                            return hasStats
-                                ? `最小 ${ds.seriesMin}mm / 最大 ${ds.seriesMax}mm / 平均 ${ds.seriesAvg}mm`
-                                : '';
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) {
+                                const v = ctx.parsed.y;
+                                if (v == null || isNaN(v)) return `${ctx.dataset.label}: データなし`;
+                                return `${ctx.dataset.label}: ${v.toFixed(1)}mm`;
+                            },
+                            afterLabel: function (ctx) {
+                                const ds = ctx.dataset;
+                                const hasStats = ds.seriesMin != null && ds.seriesMax != null && ds.seriesAvg != null;
+                                return hasStats
+                                    ? `最小 ${ds.seriesMin}mm / 最大 ${ds.seriesMax}mm / 平均 ${ds.seriesAvg}mm`
+                                    : '';
+                            }
                         }
                     }
                 },
